@@ -4,9 +4,36 @@ config/settings.py
 """
 
 from functools import lru_cache
+import os
+from pathlib import Path
 
 from pydantic import field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+
+def _resolve_env_files() -> tuple[str, ...]:
+    root = Path(__file__).resolve().parent.parent
+
+    explicit_env_file = os.getenv("ENV_FILE", "").strip()
+    if explicit_env_file:
+        explicit_path = Path(explicit_env_file)
+        if not explicit_path.is_absolute():
+            explicit_path = root / explicit_env_file
+        env_files = [path for path in (root / ".env", explicit_path) if path.exists()]
+        return tuple(str(path) for path in env_files)
+
+    app_env = (os.getenv("APP_ENV") or os.getenv("ENV") or os.getenv("ENVIRONMENT") or "development").strip().lower()
+
+    env_files: list[Path] = []
+    base_env = root / ".env"
+    if base_env.exists():
+        env_files.append(base_env)
+
+    scoped_env = root / f".env.{app_env}"
+    if scoped_env.exists():
+        env_files.append(scoped_env)
+
+    return tuple(str(path) for path in env_files)
 
 
 class Settings(BaseSettings):
@@ -47,7 +74,7 @@ class Settings(BaseSettings):
     db_path: str = "./data/agent.db"
 
     model_config = SettingsConfigDict(
-        env_file=".env",
+        env_file=_resolve_env_files(),
         env_file_encoding="utf-8",
         extra="ignore",
     )

@@ -52,8 +52,7 @@ models/
 # Docker
 docker-compose.override.yml
 *.env
-.env.dev
-.env.example
+.env*
 
 # Node.js
 node_modules/
